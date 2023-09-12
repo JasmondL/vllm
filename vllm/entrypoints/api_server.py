@@ -13,11 +13,8 @@ from vllm.utils import random_uuid
 
 TIMEOUT_KEEP_ALIVE = 5  # seconds.
 TIMEOUT_TO_PREVENT_DEADLOCK = 1  # seconds.
-app = FastAPI()
 engine = None
 
-
-@app.post("/generate")
 async def generate(request: Request) -> Response:
     """Generate completion for the request.
 
@@ -73,11 +70,25 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--host", type=str, default="localhost")
     parser.add_argument("--port", type=int, default=8000)
+    parser.add_argument("--apiprefix", type=str, default="")
     parser = AsyncEngineArgs.add_cli_args(parser)
     args = parser.parse_args()
 
     engine_args = AsyncEngineArgs.from_cli_args(args)
     engine = AsyncLLMEngine.from_engine_args(engine_args)
+
+    app = FastAPI(
+            routes=[
+                APIRoute(
+                    "{args.apiprefix}/generate",
+                    generate,
+                    response_model=Response,
+                    response_class=JSONResponse,
+                    methods=["POST"],
+                    )
+                ],
+            timeout=600,
+            )
 
     uvicorn.run(app,
                 host=args.host,
